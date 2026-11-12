@@ -1,0 +1,4 @@
+.venv/
+expenses.json
+expenses.json.tmp
+__pycache__/
