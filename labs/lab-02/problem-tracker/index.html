@@ -108,6 +108,24 @@
     li small { color: #666; }
 
     .empty { color: #666; font-style: italic; }
+
+    /* Search box and status filter: side by side on wide screens, stacked on phones. */
+    .filters { display: flex; gap: 12px; flex-wrap: wrap; }
+    .filters > div { flex: 1 1 200px; }
+
+    /* Small status dropdown on each problem card. */
+    select.status {
+      width: auto;
+      margin: 0 0 0 12px;
+      padding: 4px 8px;
+      font-size: 0.85rem;
+    }
+
+    /* Status counter above the list. */
+    .counts { margin: 0 0 12px; font-weight: 600; color: #374151; }
+
+    /* Solved problems fade so open ones stand out. */
+    li.solved h3, li.solved p { color: #999; }
   </style>
 </head>
 <body>
@@ -136,12 +154,28 @@
 
     <h2>Problems</h2>
 
-    <!-- Search box: filters the list below by title as you type -->
-    <label for="search">Search by title</label>
-    <input id="search" type="search" placeholder="Type to filter problems…">
+    <!-- Search box and status filter: both narrow down the list below -->
+    <div class="filters">
+      <div>
+        <label for="search">Search by title</label>
+        <input id="search" type="search" placeholder="Type to filter problems…">
+      </div>
+      <div>
+        <label for="status-filter">Show</label>
+        <select id="status-filter">
+          <option value="all">All</option>
+          <option value="open">Open</option>
+          <option value="in-progress">In progress</option>
+          <option value="solved">Solved</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Counter: how many problems have each status (counts the whole list) -->
+    <p id="status-counts" class="counts" hidden></p>
 
     <p id="empty-message" class="empty">No problems yet. Add one above.</p>
-    <p id="no-matches" class="empty" hidden>No problems match your search.</p>
+    <p id="no-matches" class="empty" hidden>No problems match your search or filter.</p>
     <ul id="problem-list"></ul>
   </main>
 
@@ -162,10 +196,24 @@
       monthly: "Monthly",
       rarely: "Rarely"
     };
+
+    // Labels for each status value. New problems start as "open".
+    const STATUS_LABELS = {
+      open: "Open",
+      "in-progress": "In progress",
+      solved: "Solved"
+    };
+
+    // Problems saved before the status field existed have no status: treat them as "open".
+    function getStatus(problem) {
+      return STATUS_LABELS[problem.status] ? problem.status : "open";
+    }
     const list = document.getElementById("problem-list");
     const emptyMessage = document.getElementById("empty-message");
     const searchInput = document.getElementById("search");
     const noMatchesMessage = document.getElementById("no-matches");
+    const statusFilter = document.getElementById("status-filter");
+    const statusCounts = document.getElementById("status-counts");
 
     // Load saved problems (or start with an empty list).
     function loadProblems() {
@@ -187,10 +235,22 @@
     function renderProblems() {
       list.innerHTML = "";
 
-      // Keep only problems whose title contains the search text (ignoring upper/lower case).
+      // Count ALL problems by status (not just the filtered ones), so totals stay steady while searching.
+      const counts = { open: 0, "in-progress": 0, solved: 0 };
+      for (const p of problems) counts[getStatus(p)]++;
+      statusCounts.textContent =
+        "Open: " + counts.open +
+        " · In progress: " + counts["in-progress"] +
+        " · Solved: " + counts.solved;
+      statusCounts.hidden = problems.length === 0;
+
+      // Keep only problems that match BOTH the title search (ignoring case) and the status filter.
       const query = searchInput.value.trim().toLowerCase();
+      const statusChoice = statusFilter.value;
       const visible = problems.filter(function (p) {
-        return (p.title || "").toLowerCase().includes(query);
+        const matchesTitle = (p.title || "").toLowerCase().includes(query);
+        const matchesStatus = statusChoice === "all" || getStatus(p) === statusChoice;
+        return matchesTitle && matchesStatus;
       });
 
       // "No problems yet" when the list is truly empty; "No matches" when the search hides everything.
@@ -226,9 +286,37 @@
           deleteProblem(problem.id);
         });
 
-        item.append(title, description, date, deleteButton);
+        // Status dropdown: changing it updates this problem by its id.
+        const status = getStatus(problem);
+        if (status === "solved") item.className = "solved";
+
+        const statusSelect = document.createElement("select");
+        statusSelect.className = "status";
+        statusSelect.setAttribute("aria-label", "Status for " + problem.title);
+        for (const value in STATUS_LABELS) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = STATUS_LABELS[value];
+          statusSelect.append(option);
+        }
+        statusSelect.value = status;
+        statusSelect.addEventListener("change", function () {
+          updateStatus(problem.id, statusSelect.value);
+        });
+
+        item.append(title, description, date, statusSelect, deleteButton);
         list.append(item);
       }
+    }
+
+    // Change one problem's status, save, and redraw the list.
+    function updateStatus(id, newStatus) {
+      const problem = problems.find(function (p) { return p.id === id; });
+      if (!problem) return;
+
+      problem.status = newStatus;
+      saveProblems();
+      renderProblems();
     }
 
     // Remove one problem, save, and redraw the list.
@@ -256,6 +344,7 @@
         title: title,
         description: descriptionInput.value.trim(),
         frequency: frequencyInput.value,
+        status: "open",
         createdAt: new Date().toISOString()
       });
 
@@ -268,6 +357,9 @@
 
     // Redraw the list every time the search text changes.
     searchInput.addEventListener("input", renderProblems);
+
+    // Redraw the list when a different status filter is chosen.
+    statusFilter.addEventListener("change", renderProblems);
 
     // Start the app.
     const problems = loadProblems();
