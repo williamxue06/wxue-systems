@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Problem Tracker</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #667085; --border: #d9dde3;
+    --accent: #2f5bea; --accent-text: #ffffff; --danger: #c62828;
+    --open: #2f5bea; --progress: #b26a00; --resolved: #2e7d32; --closed: #667085;
+    --low: #2e7d32; --medium: #b26a00; --high: #d84315; --critical: #b71c1c;
+    --shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  :root[data-theme="dark"] {
+    --bg: #12151b; --panel: #1b2029; --text: #e6e9ef; --muted: #98a2b3; --border: #2e3542;
+    --accent: #6d8dff; --accent-text: #0b1020; --danger: #ef5350;
+    --open: #6d8dff; --progress: #ffb74d; --resolved: #66bb6a; --closed: #98a2b3;
+    --low: #66bb6a; --medium: #ffb74d; --high: #ff8a65; --critical: #ef5350;
+    --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    padding: 16px 24px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  header h1 { margin: 0; font-size: 1.3rem; }
+  .header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 60px; }
+  button { font: inherit; cursor: pointer; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    padding: 7px 12px; border-radius: 6px; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  button.danger { color: var(--danger); border-color: var(--danger); }
+  input, select, textarea { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; padding: 7px 9px; width: 100%; }
+  textarea { resize: vertical; min-height: 80px; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; box-shadow: var(--shadow);
+    cursor: pointer; text-align: left; }
+  .stat .num { font-size: 1.6rem; font-weight: 700; }
+  .stat .lbl { font-size: .8rem; color: var(--muted); }
+  .stat.active { outline: 2px solid var(--accent); }
+
+  .toolbar { display: grid; grid-template-columns: 2fr repeat(4, 1fr) auto; gap: 10px; margin-bottom: 14px; }
+  @media (max-width: 800px) { .toolbar { grid-template-columns: 1fr 1fr; } .toolbar .search { grid-column: 1 / -1; } }
+
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; box-shadow: var(--shadow); cursor: pointer; }
+  .card:hover { border-color: var(--accent); }
+  .card.p-Low { border-left-color: var(--low); } .card.p-Medium { border-left-color: var(--medium); }
+  .card.p-High { border-left-color: var(--high); } .card.p-Critical { border-left-color: var(--critical); }
+  .card-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+  .card h3 { margin: 0; font-size: 1rem; }
+  .card .id { color: var(--muted); font-weight: 400; font-size: .85rem; margin-right: 6px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; font-size: .8rem; color: var(--muted); align-items: center; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: .75rem; font-weight: 600; border: 1px solid currentColor; }
+  .s-Open { color: var(--open); } .s-In-Progress { color: var(--progress); } .s-Resolved { color: var(--resolved); } .s-Closed { color: var(--closed); }
+  .pr-Low { color: var(--low); } .pr-Medium { color: var(--medium); } .pr-High { color: var(--high); } .pr-Critical { color: var(--critical); }
+  .overdue { color: var(--danger); font-weight: 600; }
+  .empty { text-align: center; color: var(--muted); padding: 40px; border: 1px dashed var(--border); border-radius: 8px; }
+
+  dialog { border: 1px solid var(--border); border-radius: 10px; padding: 0; width: min(680px, 94vw); background: var(--panel); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.45); }
+  .dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .dlg-head h2 { margin: 0; font-size: 1.1rem; }
+  .dlg-body { padding: 16px 18px; max-height: 70vh; overflow-y: auto; }
+  .dlg-foot { display: flex; justify-content: space-between; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+  .field { margin-bottom: 12px; }
+  .error { color: var(--danger); font-size: .8rem; margin-top: 4px; }
+  .desc { white-space: pre-wrap; margin: 6px 0 14px; }
+  .history { list-style: none; padding: 0; margin: 0; }
+  .history li { border-top: 1px solid var(--border); padding: 8px 0; font-size: .88rem; }
+  .history .when { color: var(--muted); font-size: .75rem; }
+  .history .comment { white-space: pre-wrap; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg);
+    padding: 9px 16px; border-radius: 6px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Problem Tracker</h1>
+  <div class="header-actions">
+    <button class="primary" id="newBtn">+ New problem</button>
+    <button id="exportBtn" title="Download all problems as a JSON file">Export</button>
+    <button id="importBtn" title="Load problems from a JSON file">Import</button>
+    <input type="file" id="importFile" accept="application/json" hidden>
+    <button id="themeBtn" title="Toggle dark mode">Dark mode</button>
+  </div>
+</header>
+
+<main>
+  <section class="stats" id="stats"></section>
+
+  <section class="toolbar">
+    <input class="search" id="search" type="search" placeholder="Search title, description, assignee…" aria-label="Search">
+    <select id="fStatus" aria-label="Filter by status"><option value="">All statuses</option></select>
+    <select id="fPriority" aria-label="Filter by priority"><option value="">All priorities</option></select>
+    <select id="fCategory" aria-label="Filter by category"><option value="">All categories</option></select>
+    <select id="sort" aria-label="Sort">
+      <option value="updated">Recently updated</option>
+      <option value="created">Newest first</option>
+      <option value="priority">Priority (high → low)</option>
+      <option value="due">Due date (soonest)</option>
+      <option value="title">Title (A → Z)</option>
+    </select>
+    <button id="clearFilters">Clear</button>
+  </section>
+
+  <section class="list" id="list"></section>
+</main>
+
+<!-- Create / edit form -->
+<dialog id="formDlg">
+  <form id="form" method="dialog" novalidate>
+    <div class="dlg-head"><h2 id="formTitle">New problem</h2><button type="button" data-close>✕</button></div>
+    <div class="dlg-body">
+      <div class="field">
+        <label for="fTitle">Title *</label>
+        <input id="fTitle" maxlength="120" required>
+        <div class="error" id="titleErr"></div>
+      </div>
+      <div class="field">
+        <label for="fDesc">Description</label>
+        <textarea id="fDesc" placeholder="What happened? Steps to reproduce? What did you expect?"></textarea>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="fPri">Priority</label><select id="fPri"></select></div>
+        <div class="field"><label for="fCat">Category</label><select id="fCat"></select></div>
+        <div class="field"><label for="fStat">Status</label><select id="fStat"></select></div>
+        <div class="field"><label for="fDue">Due date</label><input id="fDue" type="date"></div>
+        <div class="field"><label for="fReporter">Reported by</label><input id="fReporter" maxlength="60"></div>
+        <div class="field"><label for="fAssignee">Assigned to</label><input id="fAssignee" maxlength="60"></div>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <span></span>
+      <div style="display:flex; gap:8px">
+        <button type="button" data-close>Cancel</button>
+        <button type="submit" class="primary">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Detail view -->
+<dialog id="detailDlg">
+  <div class="dlg-head"><h2 id="dTitle"></h2><button type="button" data-close>✕</button></div>
+  <div class="dlg-body">
+    <div class="meta" id="dMeta"></div>
+    <div class="desc" id="dDesc"></div>
+    <div class="field">
+      <label for="dStatus">Change status</label>
+      <select id="dStatus"></select>
+    </div>
+    <div class="field">
+      <label for="dComment">Add a comment</label>
+      <textarea id="dComment" placeholder="Notes, updates, how it was fixed…"></textarea>
+      <div style="margin-top:6px; text-align:right"><button class="primary" id="addComment">Add comment</button></div>
+    </div>
+    <h3 style="font-size:.95rem; margin:16px 0 4px">History</h3>
+    <ul class="history" id="dHistory"></ul>
+  </div>
+  <div class="dlg-foot">
+    <button class="danger" id="deleteBtn">Delete</button>
+    <button id="editBtn">Edit</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Constants ----------
+const STORAGE_KEY = 'problemTracker.v1';
+const THEME_KEY = 'problemTracker.theme';
+const STATUSES = ['Open', 'In Progress', 'Resolved', 'Closed'];
+const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
+const CATEGORIES = ['Bug', 'Hardware', 'Software', 'Network', 'Access', 'Facilities', 'Other'];
+
+// ---------- State ----------
+let state = load();
+let editingId = null;   // id of problem in the edit form (null = creating)
+let viewingId = null;   // id of problem in the detail view
+
+// ---------- Storage ----------
+function load() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.problems)) return { problems: data.problems, nextId: data.nextId || 1 };
+    }
+  } catch (e) { console.warn('Could not read saved data:', e); }
+  return { problems: [], nextId: 1 };
+}
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch (e) { toast('Could not save — browser storage may be full or blocked.'); }
+}
+
+// ---------- Helpers ----------
+const $ = (id) => document.getElementById(id);
+function esc(s) { // prevent typed text from being treated as HTML
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+const cls = (s) => s.replace(/\s+/g, '-');
+const nowISO = () => new Date().toISOString();
+function fmtDate(iso) { return new Date(iso).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); }
+function fmtDue(d) { return new Date(d + 'T00:00:00').toLocaleDateString([], { dateStyle: 'medium' }); }
+function todayStr() { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); }
+function isOverdue(p) { return p.dueDate && p.dueDate < todayStr() && (p.status === 'Open' || p.status === 'In Progress'); }
+function fillSelect(sel, items, keepFirst = false) {
+  const first = keepFirst ? sel.options[0].outerHTML : '';
+  sel.innerHTML = first + items.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+function find(id) { return state.problems.find(p => p.id === id); }
+function log(p, text, type = 'event') { p.history.unshift({ type, text, at: nowISO() }); p.updatedAt = nowISO(); }
+
+// ---------- Rendering ----------
+function renderStats() {
+  const ps = state.problems;
+  const cards = [
+    { label: 'Total', n: ps.length, filter: { status: '' } },
+    ...STATUSES.map(s => ({ label: s, n: ps.filter(p => p.status === s).length, filter: { status: s } })),
+    { label: 'Overdue', n: ps.filter(isOverdue).length, filter: { overdue: true } },
+  ];
+  const cur = $('fStatus').value;
+  $('stats').innerHTML = cards.map((c, i) => {
+    const active = c.filter.overdue ? overdueOnly : (!overdueOnly && c.filter.status === cur && (i > 0 || cur === ''));
+    return `<button class="stat ${active ? 'active' : ''}" data-i="${i}">
+      <div class="num ${c.filter.overdue && c.n ? 'overdue' : ''}">${c.n}</div><div class="lbl">${esc(c.label)}</div></button>`;
+  }).join('');
+  $('stats').querySelectorAll('.stat').forEach(btn => btn.onclick = () => {
+    const c = cards[+btn.dataset.i];
+    overdueOnly = !!c.filter.overdue;
+    $('fStatus').value = c.filter.overdue ? '' : c.filter.status;
+    render();
+  });
+}
+let overdueOnly = false;
+
+function filtered() {
+  const q = $('search').value.trim().toLowerCase();
+  const fs = $('fStatus').value, fp = $('fPriority').value, fc = $('fCategory').value;
+  let ps = state.problems.filter(p =>
+    (!fs || p.status === fs) && (!fp || p.priority === fp) && (!fc || p.category === fc) &&
+    (!overdueOnly || isOverdue(p)) &&
+    (!q || [p.title, p.description, p.assignee, p.reporter, '#' + p.id].join(' ').toLowerCase().includes(q))
+  );
+  const sort = $('sort').value;
+  const by = {
+    updated: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
+    created: (a, b) => b.createdAt.localeCompare(a.createdAt),
+    priority: (a, b) => PRIORITIES.indexOf(b.priority) - PRIORITIES.indexOf(a.priority) || b.updatedAt.localeCompare(a.updatedAt),
+    due: (a, b) => (a.dueDate || '9999') .localeCompare(b.dueDate || '9999'),
+    title: (a, b) => a.title.localeCompare(b.title),
+  }[sort];
+  return ps.sort(by);
+}
+
+function renderList() {
+  const ps = filtered();
+  if (!state.problems.length) {
+    $('list').innerHTML = `<div class="empty">No problems yet. Click <b>+ New problem</b> to log the first one.</div>`;
+    return;
+  }
+  if (!ps.length) { $('list').innerHTML = `<div class="empty">No problems match your search or filters.</div>`; return; }
+  $('list').innerHTML = ps.map(p => `
+    <article class="card p-${cls(p.priority)}" data-id="${p.id}" tabindex="0">
+      <div class="card-top">
+        <h3><span class="id">#${p.id}</span>${esc(p.title)}</h3>
+        <span class="badge s-${cls(p.status)}">${esc(p.status)}</span>
+      </div>
+      <div class="meta">
+        <span class="badge pr-${cls(p.priority)}">${esc(p.priority)}</span>
+        <span>${esc(p.category)}</span>
+        ${p.assignee ? `<span>→ ${esc(p.assignee)}</span>` : '<span>Unassigned</span>'}
+        ${p.dueDate ? `<span class="${isOverdue(p) ? 'overdue' : ''}">Due ${fmtDue(p.dueDate)}${isOverdue(p) ? ' (overdue)' : ''}</span>` : ''}
+        <span>Updated ${fmtDate(p.updatedAt)}</span>
+        ${p.history.filter(h => h.type === 'comment').length ? `<span>💬 ${p.history.filter(h => h.type === 'comment').length}</span>` : ''}
+      </div>
+    </article>`).join('');
+  $('list').querySelectorAll('.card').forEach(el => {
+    el.onclick = () => openDetail(+el.dataset.id);
+    el.onkeydown = (e) => { if (e.key === 'Enter') openDetail(+el.dataset.id); };
+  });
+}
+
+function render() { renderStats(); renderList(); }
+
+// ---------- Create / edit ----------
+function openForm(id = null) {
+  editingId = id;
+  const p = id ? find(id) : null;
+  $('formTitle').textContent = p ? `Edit problem #${p.id}` : 'New problem';
+  $('fTitle').value = p?.title || '';
+  $('fDesc').value = p?.description || '';
+  $('fPri').value = p?.priority || 'Medium';
+  $('fCat').value = p?.category || 'Bug';
+  $('fStat').value = p?.status || 'Open';
+  $('fDue').value = p?.dueDate || '';
+  $('fReporter').value = p?.reporter || '';
+  $('fAssignee').value = p?.assignee || '';
+  $('titleErr').textContent = '';
+  $('formDlg').showModal();
+  $('fTitle').focus();
+}
+
+$('form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const title = $('fTitle').value.trim();
+  if (!title) { $('titleErr').textContent = 'Please enter a title.'; $('fTitle').focus(); return; }
+  const data = {
+    title, description: $('fDesc').value.trim(), priority: $('fPri').value, category: $('fCat').value,
+    status: $('fStat').value, dueDate: $('fDue').value, reporter: $('fReporter').value.trim(), assignee: $('fAssignee').value.trim(),
+  };
+  if (editingId) {
+    const p = find(editingId);
+    const labels = { title: 'title', description: 'description', priority: 'priority', category: 'category',
+      status: 'status', dueDate: 'due date', reporter: 'reporter', assignee: 'assignee' };
+    const changes = Object.keys(data).filter(k => (p[k] || '') !== (data[k] || ''));
+    if (changes.length) {
+      changes.forEach(k => {
+        const short = ['description'].includes(k) ? 'Description updated'
+          : `${labels[k][0].toUpperCase() + labels[k].slice(1)}: "${p[k] || '—'}" → "${data[k] || '—'}"`;
+        log(p, short);
+      });
+      Object.assign(p, data);
+      if (data.status === 'Resolved' || data.status === 'Closed') p.resolvedAt ||= nowISO(); else p.resolvedAt = null;
+      toast(`Problem #${p.id} updated`);
+    }
+  } else {
+    const t = nowISO();
+    const p = { id: state.nextId++, ...data, createdAt: t, updatedAt: t, resolvedAt: null, history: [] };
+    log(p, 'Problem created');
+    state.problems.push(p);
+    toast(`Problem #${p.id} created`);
+  }
+  save();
+  $('formDlg').close();
+  render();
+  if (viewingId) openDetail(viewingId);
+});
+
+// ---------- Detail view ----------
+function openDetail(id) {
+  const p = find(id); if (!p) return;
+  viewingId = id;
+  $('dTitle').innerHTML = `<span class="id" style="color:var(--muted);font-weight:400">#${p.id}</span> ${esc(p.title)}`;
+  $('dMeta').innerHTML = `
+    <span class="badge s-${cls(p.status)}">${esc(p.status)}</span>
+    <span class="badge pr-${cls(p.priority)}">${esc(p.priority)}</span>
+    <span>${esc(p.category)}</span>
+    <span>Reported by ${esc(p.reporter || '—')}</span>
+    <span>Assigned to ${esc(p.assignee || '—')}</span>
+    ${p.dueDate ? `<span class="${isOverdue(p) ? 'overdue' : ''}">Due ${fmtDue(p.dueDate)}${isOverdue(p) ? ' (overdue)' : ''}</span>` : ''}
+    <span>Created ${fmtDate(p.createdAt)}</span>
+    ${p.resolvedAt ? `<span>Resolved ${fmtDate(p.resolvedAt)}</span>` : ''}`;
+  $('dDesc').innerHTML = p.description ? esc(p.description) : '<i style="color:var(--muted)">No description.</i>';
+  $('dStatus').value = p.status;
+  $('dComment').value = '';
+  $('dHistory').innerHTML = p.history.map(h => `
+    <li><div class="when">${fmtDate(h.at)}${h.type === 'comment' ? ' · comment' : ''}</div>
+    <div class="${h.type === 'comment' ? 'comment' : ''}">${esc(h.text)}</div></li>`).join('');
+  if (!$('detailDlg').open) $('detailDlg').showModal();
+}
+
+$('dStatus').onchange = () => {
+  const p = find(viewingId); const s = $('dStatus').value;
+  if (p.status === s) return;
+  log(p, `Status: "${p.status}" → "${s}"`);
+  p.status = s;
+  if (s === 'Resolved' || s === 'Closed') p.resolvedAt ||= nowISO(); else p.resolvedAt = null;
+  save(); render(); openDetail(p.id); toast(`Status set to ${s}`);
+};
+$('addComment').onclick = () => {
+  const text = $('dComment').value.trim();
+  if (!text) { $('dComment').focus(); return; }
+  const p = find(viewingId);
+  log(p, text, 'comment');
+  save(); render(); openDetail(p.id); toast('Comment added');
+};
+$('editBtn').onclick = () => openForm(viewingId);
+$('deleteBtn').onclick = () => {
+  const p = find(viewingId);
+  if (!confirm(`Delete problem #${p.id} "${p.title}"? This cannot be undone.`)) return;
+  state.problems = state.problems.filter(x => x.id !== p.id);
+  viewingId = null;
+  save(); $('detailDlg').close(); render(); toast(`Problem #${p.id} deleted`);
+};
+$('detailDlg').addEventListener('close', () => { if (!$('formDlg').open) viewingId = null; });
+
+// ---------- Export / import ----------
+$('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `problems-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$('importBtn').onclick = () => $('importFile').click();
+$('importFile').onchange = async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!Array.isArray(data.problems)) throw new Error('missing "problems" list');
+    const ok = data.problems.every(p => typeof p.id === 'number' && typeof p.title === 'string' && Array.isArray(p.history));
+    if (!ok) throw new Error('some problems are missing required fields');
+    if (!confirm(`Replace your ${state.problems.length} current problem(s) with ${data.problems.length} from the file?`)) return;
+    state = { problems: data.problems, nextId: Math.max(data.nextId || 1, ...data.problems.map(p => p.id + 1), 1) };
+    save(); render(); toast(`Imported ${data.problems.length} problem(s)`);
+  } catch (err) { alert('Could not import that file: ' + err.message); }
+  finally { e.target.value = ''; }
+};
+
+// ---------- Theme ----------
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('themeBtn').textContent = t === 'dark' ? 'Light mode' : 'Dark mode';
+}
+$('themeBtn').onclick = () => {
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(t);
+  try { localStorage.setItem(THEME_KEY, t); } catch {}
+};
+
+// ---------- Wiring ----------
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => b.closest('dialog').close());
+$('newBtn').onclick = () => openForm();
+['search', 'fPriority', 'fCategory', 'sort'].forEach(id => $(id).addEventListener('input', render));
+$('fStatus').addEventListener('input', () => { overdueOnly = false; render(); });
+$('clearFilters').onclick = () => {
+  $('search').value = ''; ['fStatus', 'fPriority', 'fCategory'].forEach(id => $(id).value = '');
+  $('sort').value = 'updated'; overdueOnly = false; render();
+};
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'n' && !e.target.closest('input, textarea, select') && !document.querySelector('dialog[open]')) { e.preventDefault(); openForm(); }
+  if (e.key === '/' && !e.target.closest('input, textarea, select') && !document.querySelector('dialog[open]')) { e.preventDefault(); $('search').focus(); }
+});
+
+// ---------- Init ----------
+fillSelect($('fStatus'), STATUSES, true);
+fillSelect($('fPriority'), PRIORITIES, true);
+fillSelect($('fCategory'), CATEGORIES, true);
+fillSelect($('fPri'), PRIORITIES);
+fillSelect($('fCat'), CATEGORIES);
+fillSelect($('fStat'), STATUSES);
+fillSelect($('dStatus'), STATUSES);
+let savedTheme = null; try { savedTheme = localStorage.getItem(THEME_KEY); } catch {}
+applyTheme(savedTheme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+render();
+</script>
+</body>
+</html>

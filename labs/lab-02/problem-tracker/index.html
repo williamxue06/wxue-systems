@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Problem Tracker</title>
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f4f5f7;
+      color: #222;
+      margin: 0;
+      padding: 24px 16px;
+    }
+
+    main {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    h1 { margin-top: 0; }
+
+    form {
+      background: #fff;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      font: inherit;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+
+    textarea { min-height: 80px; resize: vertical; }
+
+    button {
+      background: #1f5fbf;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      font: inherit;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    button:hover { background: #174a96; }
+
+    /* Red delete button, smaller than the main "Add problem" button. */
+    button.delete {
+      background: #c62828;
+      padding: 4px 10px;
+      font-size: 0.85rem;
+      margin-left: 12px;
+    }
+
+    button.delete:hover { background: #8e1c1c; }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      background: #fff;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 12px;
+    }
+
+    li h3 {
+      margin: 0 0 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .badge.daily   { background: #fde2e2; color: #9b1c1c; }
+    .badge.weekly  { background: #fdecc8; color: #8a4b08; }
+    .badge.monthly { background: #dbeafe; color: #1e40af; }
+    .badge.rarely  { background: #e5e7eb; color: #374151; }
+    li p { margin: 0 0 8px; white-space: pre-wrap; }
+    li small { color: #666; }
+
+    .empty { color: #666; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Problem Tracker</h1>
+
+    <!-- Form for adding a new problem -->
+    <form id="problem-form">
+      <label for="title">Title</label>
+      <input id="title" type="text" required placeholder="e.g. Printer jammed again">
+
+      <label for="description">Description</label>
+      <textarea id="description" placeholder="What happened? Where? Why does it matter?"></textarea>
+
+      <label for="frequency">How often does this happen?</label>
+      <select id="frequency" required>
+        <option value="">Choose…</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="rarely">Rarely</option>
+      </select>
+
+      <button type="submit">Add problem</button>
+    </form>
+
+    <h2>Problems</h2>
+    <p id="empty-message" class="empty">No problems yet. Add one above.</p>
+    <ul id="problem-list"></ul>
+  </main>
+
+  <script>
+    // The key we use to save and load data in localStorage.
+    const STORAGE_KEY = "problems";
+
+    // Grab the page elements we need to work with.
+    const form = document.getElementById("problem-form");
+    const titleInput = document.getElementById("title");
+    const descriptionInput = document.getElementById("description");
+    const frequencyInput = document.getElementById("frequency");
+
+    // Labels shown on the page for each saved frequency value.
+    const FREQUENCY_LABELS = {
+      daily: "Daily",
+      weekly: "Weekly",
+      monthly: "Monthly",
+      rarely: "Rarely"
+    };
+    const list = document.getElementById("problem-list");
+    const emptyMessage = document.getElementById("empty-message");
+
+    // Load saved problems (or start with an empty list).
+    function loadProblems() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        return saved ? JSON.parse(saved) : [];
+      } catch (error) {
+        // If the saved data is broken or storage is blocked, start fresh.
+        return [];
+      }
+    }
+
+    // Save the current problems to localStorage.
+    function saveProblems() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(problems));
+    }
+
+    // Redraw the list on the page from the problems array.
+    function renderProblems() {
+      list.innerHTML = "";
+      emptyMessage.hidden = problems.length > 0;
+
+      // Show newest problems first.
+      for (const problem of [...problems].reverse()) {
+        const item = document.createElement("li");
+
+        const title = document.createElement("h3");
+        title.textContent = problem.title;
+
+        // Frequency badge. Older problems saved before this field existed show "Not rated".
+        const badge = document.createElement("span");
+        const label = FREQUENCY_LABELS[problem.frequency];
+        badge.className = label ? "badge " + problem.frequency : "badge";
+        badge.textContent = label || "Not rated";
+        title.append(badge);
+
+        const description = document.createElement("p");
+        description.textContent = problem.description;
+
+        const date = document.createElement("small");
+        date.textContent = "Added " + new Date(problem.createdAt).toLocaleString();
+
+        // Delete button: asks first, then removes this problem by its id.
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "delete";
+        deleteButton.textContent = "Delete";
+        deleteButton.addEventListener("click", function () {
+          deleteProblem(problem.id);
+        });
+
+        item.append(title, description, date, deleteButton);
+        list.append(item);
+      }
+    }
+
+    // Remove one problem, save, and redraw the list.
+    function deleteProblem(id) {
+      const index = problems.findIndex(function (p) { return p.id === id; });
+      if (index === -1) return;
+
+      const ok = confirm('Delete "' + problems[index].title + '"? This cannot be undone.');
+      if (!ok) return;
+
+      problems.splice(index, 1); // Take it out of the array.
+      saveProblems();
+      renderProblems();
+    }
+
+    // When the form is submitted, add a new problem.
+    form.addEventListener("submit", function (event) {
+      event.preventDefault(); // Stop the page from reloading.
+
+      const title = titleInput.value.trim();
+      if (!title) return;
+
+      problems.push({
+        id: Date.now(),
+        title: title,
+        description: descriptionInput.value.trim(),
+        frequency: frequencyInput.value,
+        createdAt: new Date().toISOString()
+      });
+
+      saveProblems();
+      renderProblems();
+
+      form.reset();
+      titleInput.focus();
+    });
+
+    // Start the app.
+    const problems = loadProblems();
+    renderProblems();
+  </script>
+</body>
+</html>
