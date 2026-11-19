@@ -14,11 +14,16 @@
 - User must try the app and confirm it works for them.
 - Complete keyboard and assistive-technology checks.
 - Browser-level simulation of storage failures and corrupt data (logic is covered by automated tests).
-- Public deployment and verification at the deployed URL.
 - Usability sessions with the interviewed participants.
 
 ## Tooling note
 
 The default Turbopack production build failed when creating a local process/port in this environment. Webpack compilation succeeds; the build script uses `next build --webpack` for reproducibility.
 
-Test records were entered in the local preview only. No sample workout histories are committed or shared with users.
+A sample set was entered in the local preview and in this browser on the public site. No sample workout histories are committed or shared across users.
+
+## Public deployment
+
+Deployed November 19, 2026: https://repbook-workout-log.vercel.app/
+
+Vercel reported Deployed to Production for project `repbook-workout-log`, using the repository’s `app` root directory. The public app loaded, saved Cable lateral raise at 17.5 lb for 10 reps, and retained the entry after refreshing. This is an agent verification, not a completed student usability session.

@@ -1,6 +1,6 @@
 # Gym Workout Log — Requirements
 
-Status: Interview synthesis and first-version requirements. The app has not been built or tested yet.
+Status: Interview synthesis and first-version requirements. The first version is built and deployed; see the version 1 verification report for checks completed.
 
 ## Problem statement
 

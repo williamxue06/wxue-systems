@@ -6,7 +6,7 @@
 - **Their problem:** Interviewed lifters forget previous weights and reps, and find notes or spreadsheets awkward during workouts.
 - **The system:** A gym workout log for saving exercises, weights, and reps and reviewing dated history.
 - **Working alone or in a pair:** Not yet recorded.
-- **Status:** Sprint 1 app implemented locally; six automated tests and a production build pass. Public deployment and student review remain.
+- **Status:** Sprint 1 app deployed on Vercel. Six automated tests and a production build pass; saving and history after refresh verified on the public site. Student review and demo remain.
 
 Context updated November 19, 2026, after three interviews confirmed difficulty remembering and finding previous workout results. Interview responses are anonymized; no interview recordings are stored here.
 
@@ -14,7 +14,7 @@ Context updated November 19, 2026, after three interviews confirmed difficulty r
 
 | What | Link |
 |---|---|
-| Live app | Not deployed yet |
+| Live app | [Repbook workout log](https://repbook-workout-log.vercel.app/) |
 | Requirements | [discovery/requirements.md](discovery/requirements.md) |
 | v1 spec | [specs/v1-spec.md](specs/v1-spec.md) |
 | Process flow | [design/process-flow.md](design/process-flow.md) |

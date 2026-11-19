@@ -2,7 +2,7 @@
 
 ## Purpose and evidence
 
-Help lifters record performed sets and find previous results instead of relying on memory. See [requirements](../discovery/requirements.md) and the three interviews linked there. This spec describes a build that has not yet been implemented.
+Help lifters record performed sets and find previous results instead of relying on memory. See [requirements](../discovery/requirements.md) and the three interviews linked there. The first version has been implemented; see [verification results](v1-verification.md) for completed and remaining checks.
 
 ## Scope
 
@@ -45,4 +45,4 @@ Use Vitest for meaningful validation and storage-behavior tests, plus manual bro
 
 ## Deployment
 
-Deploy on Vercel at a public URL and link it in README.md. A public app URL does not make browser-local histories shared. Deployment has not yet happened.
+Deploy on Vercel at a public URL and link it in README.md. A public app URL does not make browser-local histories shared. Deployed November 19, 2026: https://repbook-workout-log.vercel.app/. See [verification results](v1-verification.md).
