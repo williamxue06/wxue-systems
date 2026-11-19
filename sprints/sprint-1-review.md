@@ -7,7 +7,7 @@
 **What was produced:**
 
 - Project context and public app link: [README](../README.md).
-- Three anonymized interviews: [Participant 1](../discovery/interview-01.md), [Participant 2](../discovery/interview-02.md), [Participant 3](../discovery/interview-03.md).
+- Three anonymized interviews: [Participant 1](../discovery/interview-1.md), [Participant 2](../discovery/interview-2.md), [Participant 3](../discovery/interview-3.md).
 - [Requirements summary](../discovery/requirements.md), including the problem, job to be done, persona, riskiest assumption, and MVP scope.
 - [User stories and acceptance criteria](../specs/user-stories.md), [process flow](../design/process-flow.md), and [version 1 spec](../specs/v1-spec.md).
 - [App](../app/src/app/page.tsx) with exercise, weight, and rep entry, dated history, validation, and browser-local persistence.
